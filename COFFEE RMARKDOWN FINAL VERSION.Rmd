@@ -1,0 +1,587 @@
+---
+title: "Coffee Ratings"
+author: "Ohad Aloni, Roni Gover, Margarita Timoshin"
+date: "June 2021"
+output: html_document
+---
+\
+<img src="https://ictcoffee.com/wp-content/uploads/2020/01/coffeebeans-1-1960x1306.jpeg">
+\
+\
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+<h1 style="color:green; ">Data Analysis</h1>
+
+<h2 style="color:green; ">Introduction</h2>   
+
+\   
+In this research we will focus on the Coffee Ratings data set.
+\
+This is a sub-set of data on coffee bean ratings/quality originally collected by James LeDoux (jmzledoux) and distributed 
+through the R for Data Science TidyTuesday project.
+
+The data was re-posted to <a href="https://www.kaggle.com/volpatto/coffee-quality-database-from-cqi?select=merged_data_cleaned.csv">Kaggle</a>.
+\
+\   
+
+<u>We will focus mainly on:</u>  
+
+<ul style="list-style-type:disc;">
+  <li>Tidying our data set.</li>
+  <li>Visualizations.</li>
+  <li>Statistical Models and methods learned during the course.</li>
+</ul>  
+\
+
+Our goal is to demonstrate and practice the different methods which we have learned during the course by examining the relationships between different variables from our Coffee Ratings data set.
+\
+
+<u>The methods used in our research are:</u>
+\
+<ul style="list-style-type:disc;">
+  <li>Hypothesis test</li>
+  <li>Model of simple regression.</li>
+</ul>  
+\
+\   
+<h2 style="color:green;">Importing and Tidying Data</h2>
+\
+\
+```{r import_lib2,message = FALSE, warning = FALSE}
+suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(visdat)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(ggraph)))
+suppressWarnings(suppressMessages(library(igraph)))
+suppressWarnings(suppressMessages(library(tinytex)))
+suppressWarnings(suppressMessages(library(ggridges)))
+suppressWarnings(suppressMessages(library(naniar)))
+suppressWarnings(suppressMessages(library(ggthemes)))
+suppressWarnings(suppressMessages(library(GGally)))
+suppressWarnings(suppressMessages(library(fishualize)))
+suppressWarnings(suppressMessages(library(ggforce)))
+suppressWarnings(suppressMessages(library(gridExtra)))
+suppressWarnings(suppressMessages(library(widyr)))
+
+
+coffee_ratings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-07/coffee_ratings.csv')
+```
+\
+In order to get a general impression about the data, we use the function glimpse().\  
+\
+```{r cars3}
+```
+
+
+```{r cars3}
+glimpse(coffee_ratings)
+
+```
+In addition, the dimension is:
+\
+\
+```{r initial dim, echo = FALSE}
+
+dim(coffee_ratings)
+
+```
+\
+The following table contains detailed description of table columns:
+\
+<html>
+<head>
+<style>
+table {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+
+}
+
+td, th {
+
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 15px;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
+}
+</style>
+</head>
+<body>
+      
+
+| variable      | class |description     |
+| :---        |    :----:   |          ---: |
+| total_cup_points      | double       | Total rating/points (0 - 100 scale)   |
+| species   | 	character        | Species of coffee bean (arabica or robusta)      |
+| owner | character	| Owner of the farm |
+| country_of_origin | character | Where the bean came from |
+| farm_name | 	character | Name of the farm |
+| lot_number | 	character | Lot number of the beans tested |
+| mill | character | Mill where the beans were processed |
+| ico_number | character | 	International Coffee Organization number |
+| company | 	character | Company name |
+|altitude	| character|	Altitude - this is a messy column|
+|region|	character|	Region where bean came from|
+|producer	|character	|Producer of the roasted bean|
+|number_of_bags|	double|	Number of bags tested|
+|bag_weight	|character	|Bag weight tested|
+|in_country_partner	|character|	Partner for the country|
+|harvest_year|	character|	When the beans were harvested (year)|
+|grading_date	|character	|When the beans were graded|
+|owner_1	|character	|Who owns the beans|
+|variety|	character|	Variety of the beans|
+|processing_method	|character|	Method for processing|
+|aroma	|double	|Aroma grade|
+|flavor	|double	|Flavor grade|
+|aftertaste	|double	|Aftertaste grade|
+|acidity	|double	|Acidity grade|
+|body	|double	|Body grade|
+|balance	|double	|Balance grade|
+|uniformity	|double	|Uniformity grade|
+|clean_cup|	double|	Clean cup grade|
+|sweetness	|double	|Sweetness grade|
+|cupper_points	|double	|Cupper Points|
+|moisture	|double	|Moisture Grade|
+|category_one_defects	|double|	Category one defects (count)|
+|quakers	|double|	quakers|
+|color	|character	|Color of bean|
+|category_two_defects	|double	|Category two defects (count)|
+|expiration	|character	|Expiration date of the beans|
+|certification_body	|character	|Who certified it|
+|certification_address	|character	|Certification body address|
+|certification_contact	|character	|Certification contact|
+|unit_of_measurement	|character	|Unit of measurement|
+|altitude_low_meters	|double	|Altitude low meters|
+|altitude_high_meters	|double|	Altitude high meters|
+|altitude_mean_meters	|double	|Altitude mean meters|
+
+</body>
+</html>
+\
+
+
+\
+Overall, we can state, that the chosen data set is pretty tidy. Yet, there are several issues we encountered.
+\
+<u>Problems with the applied data set:</u>
+\
+\
+<ul style="list-style-type:disc;">
+  <li>The harvest year data is messy. There is a need to convert all years into numeric variables.</li>
+  <li>There are different measuring systems (Kg vs. lbs) when it comes to the bag weight column. </li>
+  <li>There was missing data and several columns with many NA values. </li>
+  <li>Some rows had values of 0 for the entire row and some values wasn't reasonable (such as height = 10k). </li>
+
+</ul>  
+\
+<u>Solutions</u>:
+
+<ul style="list-style-type:disc;">
+  <li>The harvest year - changed for year as -dddd- numeric format</li>
+  <li>Bag weight - unite and fixed for kg only</li>
+  <li>missing data - filtered in case it was a low proportion of data</li>
+  <li>the data was filtered from invalid values</li>
+</ul>
+\
+\
+<h3 style="color:green;"> Rearranged data </h3>
+\
+\
+We chose to rearrange the data and summarize it to the columns we will use
+\
+```{r rearrange our DATA3}
+org_data <- coffee_ratings %>% 
+  filter(clean_cup > 1, altitude_mean_meters < 10000)  %>% 
+  select(total_cup_points, aroma, flavor, aftertaste, acidity, body, balance, uniformity, clean_cup, sweetness, cupper_points, 
+         moisture, altitude_low_meters, altitude_high_meters, altitude_mean_meters)
+```
+\
+Organized data:
+\
+\
+```{r view DATA3, echo=FALSE}
+glimpse(org_data)
+```
+\
+\
+dimension:
+\
+
+```{r rearrange dim, echo = FALSE}
+
+dim(org_data)
+
+```
+<h2 style="color:green;">Visualizations</h2>
+\
+In the following section, we will examine the given data using different graphs and plots
+\
+<h3 style="color:green; ">Null values distribution</h3>  
+
+First, we will check how many entries are missing in each feature.\ 
+In columns where there is a very large percentage of missing values, even if the test questions are interesting, we avoid working with these feature.\
+The missing entries are shown in a scale of 1-0, where 0 represents 0 percent and 1 represents 100 percent. We will also convert this table into a graph to give a visual indication
+\
+\
+```{r TIDY OUR DATA5}
+
+##shows which feature has missing date in 0-1 ratio.
+
+missing_data <- coffee_ratings %>%
+  summarize(across(everything(),~mean(!is.na(.)))) %>%
+  gather()
+
+print.data.frame(missing_data)
+
+```
+\
+
+```{r plot1}
+
+visdat::vis_dat(coffee_ratings)
+
+```
+
+<h3 style="color:green; ">Countries distribution</h3>
+The first thing we discovered about coffee is the division into two main types sold worldwide.\ 
+One is called Arabica, and as its name implies, its origins are clear, while the other - Robusta - a type of coffee that a very small percentage of the world drinks.\
+\
+```{r extra_plot}
+coffee_sort <- coffee_ratings %>%
+  count(species, sort = TRUE)
+
+print.data.frame(coffee_sort)
+
+```
+\
+Indeed, we will look at which countries supply Arabica coffee in all its varieties in percentages. Understanding who are the major suppliers of Arabica coffee can guide test questions and hypotheses according to the contexts of the columns. \
+For example, the relationship between acidity and taste, the relationship between acidity and height and more.\
+\
+
+```{r plot2}
+arabica_countries<-coffee_ratings %>% 
+  filter(species =="Arabica") %>% 
+  count(species=factor(species),
+        country=country_of_origin) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  arrange(-n)
+
+ggplot(arabica_countries %>% filter(country!="NA"),
+       mapping=aes(x=reorder(country,n),y=pct,fill = country, group=1,label=scales::percent(pct))) +
+  geom_bar(stat="identity")+
+  geom_text(position = position_dodge(width = 0.9),
+            hjust = -0.05,
+            size = 2.5) +
+  ggtitle("Arabica leading Coffee Countries ") +
+  theme(legend.position = "none") +
+  scale_y_continuous(labels = scales::percent) +
+  coord_flip()
+```
+\
+
+<h3 style="color:green; ">Features distribution</h3>  
+
+As mentioned, the data is a ranking of coffee according to the parameters given in the tables.\ 
+The total cup points column represents the rating given to the specific strain of the coffee genre tested.\ 
+Thus, we found that the score column is a sum of aroma columns, acidity and more (shown in the graphs).\
+Therefore, we will examine how to distribute statistically, what is the span of each parameter and more.\
+
+
+```{r plot3}
+coffee_metrics <- coffee_ratings %>%
+  select(total_cup_points, variety, owner, company,
+         country_of_origin,
+         altitude_mean_meters,
+         aroma:moisture) %>%
+  pivot_longer(aroma:cupper_points, names_to = "metric", values_to ="value")
+
+coffee_metrics %>%
+  mutate(metric = fct_reorder(metric, value)) %>%
+  ggplot(aes(value, metric,fill = metric)) +
+  theme(legend.position = "none") +
+  geom_density_ridges()
+```
+\
+<h3 style="color:green; ">Features correlations</h3>
+\
+Checking the correlation of the features with each other.\
+\
+```{r plot4,warning = FALSE}
+coffee_ratings %>% 
+  select(total_cup_points, aroma:cupper_points) %>% 
+  ggcorr()
+```
+\
+One can get the impression that most features have a mean value of 7.5 points, and look graphically normal.\
+\
+<h3 style="color:green; ">Altitude density</h3>  
+```{r plot5}
+height_density <- ggplot(org_data) +
+  geom_density(aes(altitude_low_meters, fill ="low altitude", alpha = 0.1)) +
+  geom_density(aes(altitude_mean_meters, fill ="mean altitude", alpha = 0.1)) +
+  geom_density(aes(altitude_high_meters, fill ="high altitude", alpha = 0.1)) +
+  scale_x_continuous(name = "Variables") +
+  scale_y_continuous(name = "Density") +
+  ggtitle("Density plot of altitude") +
+  scale_fill_brewer(palette="PRGn")
+
+height_density
+```
+\
+The first direction we examined is the relationships to the altitude of growing coffee beans.\
+\
+First, we examined the distribution of coffee varieties according to the altitude of their growth.\ 
+The division was given in the data in the form of "low altitude", "high altitude" and "mean altitude".\
+It seems that their distribution is fairly even in terms of the amount of information for each given altitude.\
+\
+\
+<h3 style="color:green; ">Connection between height, acidity and top 20 countries of origin</h3>  
+As lovers of sour coffee, we tested the mean of the acidity score according to the altitude of the beans grown and the country in which they were grown.\
+```{r plot6}
+coffee_ratings %>%
+  filter(altitude_mean_meters < 4000) %>%
+  mutate(country_of_origin = fct_lump(country_of_origin, 20), sort = TRUE) %>%
+  mutate(altitude_mean_meters = pmin(altitude_mean_meters, 2000)) %>%
+  ggplot(aes(x = acidity, y = altitude_mean_meters, color = country_of_origin)) +
+  geom_boxplot() +
+  theme(axis.text=element_text(size=6),
+        axis.title=element_text(size=14,face="bold"))+
+  theme(legend.position = "right")
+```
+\
+In a preliminary test, the average altitude of Ethiopia is 1,330 meters, and it leads the scoreboard in acidity and coffee score in general. \
+In contrast, Honduras, which has the lowest acidity score and does not lead in the coffee score, has an average altitude is 684 meters. These were primary indications for hypotheses.
+\
+<h2 style="color:green;">Chi Square Test</h2>
+\
+The Chi-square goodness of fit test is a statistical hypothesis test used to determine whether a variable is likely to come from a specified distribution or not.\
+
+It is often used to evaluate whether sample data is representative of the full population.
+\
+We can assume that the acidity comes from normal distribution as there are about 1000 samples and the density graph shows a normal distribution plot. 
+We will check our assumption by chi-square test for goodness of fit is applied.
+\
+\
+<!-- check how to print normal h0: -->
+H0: acidity is normally distributed. \
+H1: acidity is not normally distributed.\
+\
+
+```{r chi_sq}
+interval_breaks <- c(5.2,6.75,7.08,7.25,7.42,7.58,7.75,7.92,8.08,8.25,8.33,9)  
+
+acidity_col <- org_data %>%
+  mutate(score = cut(acidity, breaks = interval_breaks),include.lowest=TRUE)%>%
+  select(acidity,score)
+
+mu <- mean(acidity_col$acidity)
+sigma <- sd(acidity_col$acidity)
+
+acidity_chi_prep <- acidity_col %>%
+  select(score, acidity) %>%
+  count(score, name = "observed") %>%
+  mutate(upper_bound = interval_breaks[-1]) %>%
+  mutate(lower_bound = interval_breaks[1:11]) %>%
+  mutate(expected_prob = pnorm(q = upper_bound, mean = mu, sd = sigma)-
+           pnorm(q = lower_bound, mean = mu, sd = sigma)) %>%
+  mutate(expected_prob = expected_prob/sum(expected_prob)) %>%
+  mutate(expected = expected_prob*1103) %>%
+  mutate(chi_comp = (observed-expected)^2/expected)
+chi2_0 <- sum(acidity_chi_prep$chi_comp)
+chi2_0  
+
+qchisq(p = 1-0.05, df = 11-2-1)
+
+```
+\
+57.18 = chi2_0 > qchisq = 15.50731. we reject the null hypothesis. Acidity does not distribute normal.\
+\
+<h2 style="color:green;"> Simple linear Regression</h2>
+\
+correlation between features can help when searching the perfect coffee mixture for one's needs . \
+According to the correlation graph we wanted to see if there is a linear correlation between acidity and flavor.  
+\
+```{r corre1, warning =FALSE}
+
+model=lm(org_data$acidity~org_data$flavor)
+summary(model)
+```
+
+<h3 style="color:green;"> Linear Regression plot</h3>
+\
+We decided to perform two regressions. \
+One, is to test the relationship, if do exist, between the altitude of coffee beans growth and the acidity score, and of course, as an after effect - the effect of acidity on the taste score.
+\
+
+```{r LR1, warning =FALSE}
+coffee_ratings %>%
+  filter(altitude_mean_meters < 3000, acidity > 0) %>%
+  ggplot(aes(x = altitude_mean_meters, y = acidity)) +
+  geom_point(colour = "#6f4e37", alpha = 0.5, size = 2) +
+  geom_smooth(method = "lm") +
+  labs(x = "Mean Altitude (Metres)", y = "Total acidity", title = "Is there a correlation between altitude grown and quality of coffee?")
+```
+
+```{r LR2, warning =FALSE}
+
+#THIS IS A FILLTER TABLE FOR REGRESSION WITHOUT MEAN ALTITUDE > 3000
+filtered <- coffee_ratings %>%
+  ggplot(aes(x = altitude_mean_meters, y = acidity)) +
+  geom_point(colour = "#6f4e37", alpha = 0.5, size = 2) +
+  stat_smooth(method = lm, se = FALSE) +
+  geom_smooth(method = "lm") +
+  labs(x = "Mean Altitude (Metres)", y = "Total acidity", title = "Is there a correlation between altitude grown and quality of coffee?")
+
+# RUN THE LR
+filtered <- coffee_ratings[which(coffee_ratings$altitude_mean_meters < 3000 & coffee_ratings$acidity > 0),]
+model2=lm(filtered$acidity~filtered$altitude_mean_meters)
+summary(model2)
+coef(model2)
+### RESID QQ PLOT
+resid_qq<- model2 %>% ggplot(aes(sample=.resid)) +
+  geom_qq() + geom_qq_line(col="red") +
+  labs(title="QQ Plot")
+resid_qq
+
+
+```
+\
+Therefore, it can be seen that there is a similarity or identity between the parameters according to the QQ graph, when at the edges there are outlines, i.e. edge values that are entered in incorrect data or are not representative anomalies. \
+Most of the graph is on straight line, so a reasonable estimate and approximation with this information is of normal distribution
+\
+\
+When the two distributions that are compared are identical, the points in the Q-Q diagram will be found near the straight line y = x.\ 
+If there is a linear relationship between the distributions, the points in the Q-Q diagram will be found near a straight line, but not necessarily y = x. \
+\
+The Q-Q diagram can be used as a graphical means to evaluate parameters in a family of distributions that depend on location and scale.\
+Figure Q-Q is used to compare the shape of the distributions, and provides a graphical illustration of features such as location, scale, and grading of two distributions. Q-Q charts can be used to compare observational data, or theoretical distributions. The use of Q-Q charts to compare two data samples can be seen as an asymmetric way of comparing their distributions.
+\
+\
+A common use for Q-Q charts is to compare the distribution of data in observations to a theoretical model for distribution, and thus the fit between the distributions can be illustrated visually.
+\
+```{r resid_plot, warning =FALSE}
+### RESID  PLOT
+
+resid_plot<- model2 %>% ggplot(aes(x=.fitted,y=.resid)) +
+  geom_point(alpha=0.1) + geom_hline(yintercept=0) +
+  labs(title="Residual Plot")
+resid_plot
+
+
+```
+\
+Heteroscedasticity means unequal scatter.\ 
+In regression analysis, we talk about heteroscedasticity in the context of the residuals or error term.\
+Specifically, heteroscedasticity is a systematic change in the spread of the residuals over the range of measured values.\ Heteroscedasticity is a problem because ordinary least squares (OLS) regression assumes that all residuals are drawn from a population that has a constant variance (homoscedasticity).\
+\
+To satisfy the regression assumptions and be able to trust the results, the residuals should have a constant variance
+
+\
+The residuals plot looks heteroscedastic.
+\
+As the p-value is much less than 0.05, we reject the null hypothesis that β = 0. \
+Hence there is a significant relationship between the variables in the linear regression model of the data set faithful.
+\
+Low p-value shows that the effect is large or that the result is of major theoretical or practical importance.\
+A non-significant result, leading us not to reject the null hypothesis, is evidence that the null hypothesis is true. Meaning, there is a connection between altitude and acidity, though not that strong as we can see it can explain 5 percent of the variation.\
+\
+Although we see tendencies to normal distribution and tendencies of homoscedastic, the value of the R-squared is very low, and we know that Low R-squared values are problematic when you need precise predictions. So, what can be done if you have significant predictors but a low R-squared value? our low P values still indicate a real relationship between the significant predictors and the response variable. Adding more variables is an option. We will conclude at the end.\
+\
+Because the variability explained here is low (5 percent) and the slope is moderate, we also wanted to test the effect of acidity on flavor. The indication given to us between altitude and acidity, can be explained because it is one of many kinds of factor for the overall score of the coffee.\ 
+But it is interesting how these correlation and predication will look when we examine the effect of acidity on taste.
+\
+```{r corre2, warning =FALSE}
+
+org_data %>%
+  ggplot(aes(x = acidity, y = flavor)) +
+  geom_point(colour = "#6f4e37", alpha = 0.5, size = 2) +
+  stat_smooth(method = lm, se = FALSE) +
+  geom_smooth(method = "lm") +
+  labs(x = "Flavor", y = "Acidity", title = "Is there a correlation between flavor and acidity of coffee?")
+```
+\
+Based on the regression model, we can see acidity is a significant predictor of flavor.
+The R-squared is 0.57 which tells us that 57% of the variation in flavor can explained by acidity. 
+The low p-value shows that acidity is a significant coefficient for determine flavor. 
+\
+
+<h3 style="color:green;">Residual plot</h3>
+\
+We will check the assumption if homoscedastic is correct. 
+\
+
+```{r corre4, warning =FALSE}
+resid_plot<- model %>% ggplot(aes(x=.fitted,y=.resid)) +
+  geom_point(alpha=0.1) + geom_hline(yintercept=0) +
+  labs(title="Residual Plot")
+resid_plot
+```
+
+\
+The residuals plot looks homoscedastic.  
+\
+<h3 style="color:green;">QQ plot</h3>
+\
+we will check the assumption that our variables distribute normally. 
+\
+```{r corre3, warning =FALSE}
+resid_qq<- model %>% ggplot(aes(sample=.resid)) +
+  geom_qq() + geom_qq_line(col="red") +
+  labs(title="QQ Plot")
+resid_qq
+```
+
+\
+The  distribution in the data isn't going to be exactly normal. However, the Q-Q plot shows that normality is probably a reasonably good approximation.\
+Given that the graph looks homoscedastic and has a tendency to normal distribution, since the R-squared is relatively high and explains more than 50 percent of the variance of flavor, it was loosely determined that acidity is a reasonable indicator of flavor prediction.
+\
+<h2 style="color:green;">Discussion and summary</h2>
+\
+In this project we applied what we have been learning this semester, like visualizations and implication of models on data & the readability of the data and its features.\
+We witness in chi-square test that not all variables distribute normal, even if they seems so graphically.\ 
+We learned that assumptions required for linear regression are quite complicated to achieve and there is a need for more tools to handle data that is more Sparse.\ 
+Therefore, we concluded that it is hard to relay on the quite good result of the r square: 0.57 for flavor and acidity, for example.\
+\
+\
+We wanted to test the relationships between altitude grown to score and acidity.\ 
+We saw while working, that although there is a relationship between the altitude of the beans and the acidity, it is a minor relationship, which is also reflected in the slope of the graph in the linear regression. We understand, then, that height contributes little to the overall score, but contributes greatly to making a prediction about the taste of coffee. \
+That is, the height the beans were grown in affects the acidity of the beans slightly, which greatly affects the taste rating.\
+In regard of acidity and altitude - In some cases, it is possible that additional predictors can increase the true explanatory power of the model.\
+\
+However, in other cases, the data contain an inherently higher amount of unexplained variability. For example, many psychology studies have R-squared values less that 50% because people are fairly unpredictable.\
+Adding more variables will mean avoiding the dangers of an overly complicated model.
+Overall, it seems it is a probable model to predict acidity with concern of altitude, although it has to be improved to be more precise.
+\
+\
+The main difference between the first and second regressions is in the percentage of variance that can be explained by a single variable that we measured. Since (and quite clearly) we modeled only acidity, it is possible that in the additions of the other parameters, we can get a better indicator also for the relationship between altitude and coffee properties.
+\
+Therefore, a possible direction  is to examine the effect of coffee bean growing height on each parameter individually and analyze the growing areas and countries where the beans were grown in more depth.
+\
+\
+That is, for example, the beans that are thrown away because they are not good enough and the coffee score to the altitude they were grown in. 
+\
+\
+That is, we have seen that height can affect specific data that contribute to the score, with others having the potential to lower the score. 
+\
+This might  help in-depth research to understand whether the beans taste can be improved or optimal growing conditions can be found. \
+But this... In the future! <p>&#128522;</p>
+\
+\
+\
+<img src="https://p0.pikist.com/photos/801/838/coffee-beans-roasted-coffee-beans-roasted-caffeine-beans-benefit-from-stimulant-smilie-symbol.jpg">
+\
+\
+
+
+
+
+
+
+
